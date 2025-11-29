@@ -25,6 +25,8 @@ FastGS is a **general acceleration framework** that supercharges 3D Gaussian Spl
 ### 🔥 **[2025.11.17]** Pre-trained model Released 🤗!
 ### 📄 **[2025.11.26]** The supplementary material has been released [here](https://arxiv.org/abs/2511.04283)!
 ### 🔧 **[2025.11.27]** The tutorial has been released — see the [Wiki](https://github.com/fastgs/FastGS/wiki)!
+### 🔥 **[2025.11.29]** The dynamic scene reconstruction code [Fast-D3DGS](https://github.com/fastgs/FastGS/tree/fast-d3dgs) has been released!
+
 ### 🎯 Coming Soon
 - **[2025.12.31]** 🎯 **Multi-Task Expansion**:
   - Dynamic scenes Reconstruction: [Deformable-3D-Gaussians](https://github.com/ingra14m/Deformable-3D-Gaussians)
@@ -36,7 +38,7 @@ FastGS is a **general acceleration framework** that supercharges 3D Gaussian Spl
 - **[2025.12.31]** 🔌 **Backbone Enhancing**: popular 3DGS variants ([Vanilla 3DGS](https://github.com/graphdeco-inria/gaussian-splatting), [Scaffold-GS](https://github.com/city-super/Scaffold-GS), [Mip-splatting](https://github.com/autonomousvision/mip-splatting), [Taming-3DGS](https://github.com/humansensinglab/taming-3dgs))
 
 
-## 🎓 Training Framework
+## 🏗️ Training Framework
 
 Our training pipeline leverages **PyTorch** and optimized **CUDA extensions** to efficiently produce high-quality trained models in record time.
 
@@ -232,7 +234,7 @@ Our 3DGS representation is identical to vanilla 3DGS, so you can use the officia
 
 ## 🙏 Acknowledgements
 
-This project is built upon [3DGS](https://github.com/graphdeco-inria/gaussian-splatting), [Taming-3DGS](https://github.com/humansensinglab/taming-3dgs), and [Speedy-Splat](https://github.com/j-alex-hanson/speedy-splat). We extend our gratitude to all the authors for their outstanding contributions and excellent repositories!
+This project is built upon [3DGS](https://github.com/graphdeco-inria/gaussian-splatting), [Taming-3DGS](https://github.com/humansensinglab/taming-3dgs), [Speedy-Splat](https://github.com/j-alex-hanson/speedy-splat), and [Abs-GS](https://github.com/TY424/AbsGS). We extend our gratitude to all the authors for their outstanding contributions and excellent repositories!
 
 **License**: Please adhere to the licenses of 3DGS, Taming-3DGS, and Speedy-Splat.
 
