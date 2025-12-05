@@ -9,6 +9,9 @@
  * For inquiries contact  george.drettakis@inria.fr
  */
 
+// This is built upon Speedy-Splat — many thanks for their excellent work.
+
+
 #ifndef CUDA_RASTERIZER_AUXILIARY_H_INCLUDED
 #define CUDA_RASTERIZER_AUXILIARY_H_INCLUDED
 
@@ -176,6 +179,7 @@ __forceinline__ __device__ bool in_frustum(int idx,
 	return true;
 }
 
+// This is built upon Speedy-Splat — many thanks for their excellent work.
 __device__ inline float2 computeEllipseIntersection(
     const float4 con_o, const float disc, const float t, const float2 p,
     const bool isY, const float coord)
@@ -193,6 +197,7 @@ __device__ inline float2 computeEllipseIntersection(
     };
 }
 
+// This is built upon Speedy-Splat — many thanks for their excellent work.
 __device__ inline uint32_t processTiles(
     const float4 con_o, const float disc, const float t, const float2 p,
     float2 bbox_min, float2 bbox_max,
@@ -309,7 +314,7 @@ __device__ inline uint32_t processTiles(
     return tiles_count;
 }
 
-
+// This is built upon Speedy-Splat — many thanks for their excellent work.
 __device__ inline uint32_t duplicateToTilesTouched(
     const float2 p, const float4 con_o, const dim3 grid, const float mult,
     uint32_t idx, uint32_t off, float depth,
@@ -330,7 +335,7 @@ __device__ inline uint32_t duplicateToTilesTouched(
 
     // Threshold: opacity * Gaussian = 1 / 255
     float t = 2.0f * log(con_o.w * 255.0f);
-    t = mult * t;
+    t = mult * t; // beta in Compact Box
 
     float x_term = sqrt(-(con_o.y * con_o.y * t) / (disc * con_o.x));
     x_term = (con_o.y < 0) ? x_term : -x_term;

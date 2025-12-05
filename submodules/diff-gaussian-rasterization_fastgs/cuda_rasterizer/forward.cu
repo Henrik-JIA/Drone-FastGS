@@ -241,7 +241,8 @@ __global__ void preprocessCUDA(
 	float2 point_image = { ndc2Pix(p_proj.x, W), ndc2Pix(p_proj.y, H) };
 
 	float4 con_o = { conic.x, conic.y, conic.z, opacities[idx] };
-    // Only counts tiles touched when nullptr is passed as array argment.
+    // Only counts tiles touched when nullptr is passed as array argment. 
+	// This is built upon Speedy-Splat — many thanks for their excellent work.
     uint32_t tiles_count = duplicateToTilesTouched(point_image, con_o, grid, mult, 0, 0, 0, nullptr, nullptr);
     if (tiles_count == 0)
         return;

@@ -6,7 +6,7 @@
 </div>
 
 <p align="center">
-    <img src="assets/teaser_fastgs.jpg" width="800px"/>
+    <img src="assets/teaser_fastgs.png" width="800px"/>
 </p>
 
 ## 🚀 What Makes FastGS Special?
