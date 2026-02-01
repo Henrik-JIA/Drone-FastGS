@@ -377,7 +377,7 @@ class GaussianModel:
 
         self.denom = self.denom[valid_points_mask]
         self.max_radii2D = self.max_radii2D[valid_points_mask]
-        if self.tmp_radii is not None:
+        if hasattr(self, 'tmp_radii') and self.tmp_radii is not None:
             self.tmp_radii = self.tmp_radii[valid_points_mask]
 
     def cat_tensors_to_optimizer(self, tensors_dict):
