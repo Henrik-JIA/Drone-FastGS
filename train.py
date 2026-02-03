@@ -420,9 +420,9 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
 if __name__ == "__main__":
     # ============ 调试配置 ============
     # 输入路径：COLMAP 数据目录（包含 images/ 和 sparse/ 子目录）
-    DEBUG_SOURCE_PATH = r"D:\Github_code\FastGS\data\Ganluo_Test"
+    DEBUG_SOURCE_PATH = r"D:\Github_code\Drone-FastGS\data\Ganluo_Test"
     # 输出路径：训练结果保存目录
-    DEBUG_MODEL_PATH = r"D:\Github_code\FastGS\output\test"
+    DEBUG_MODEL_PATH = r"D:\Github_code\Drone-FastGS\output\test"
     # 最大迭代次数（调试时设小一点，正式训练用 30000）
     DEBUG_ITERATIONS = 10000
     # 测试迭代点：在这些迭代次数时进行评估（计算 PSNR 等指标）
