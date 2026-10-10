@@ -1,0 +1,16 @@
+# pixi environments
+.pixi
+
+.idea/
+
+.vscode/
+
+pixi.lock
+
+.claude/
+
+__pycache__/
+*.pyc
+
+output/
+data/

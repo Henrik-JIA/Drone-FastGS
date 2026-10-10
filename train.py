@@ -198,7 +198,55 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
             iter_time = iter_start.elapsed_time(iter_end)
             
-            # 评估前过滤超大高斯（让指标更准确）
+            optim_start.record()
+            
+            # Densification（必须先于评估/保存前的 prune：visibility_filter 是本轮渲染的整数下标）
+            if iteration < opt.densify_until_iter:
+                # Keep track of max radii in image-space for pruning
+                gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter])
+                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
+
+                if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
+                    size_threshold = 20 if iteration > opt.opacity_reset_interval else None
+                    my_viewpoint_stack = scene.getTrainCameras().copy()
+                    camlist = sampling_cameras(my_viewpoint_stack)
+
+                    # The multiview consistent densification of fastgs
+                    importance_score, pruning_score = compute_gaussian_score_fastgs(camlist, gaussians, pipe, bg, opt, DENSIFY=True)                    
+                    gaussians.densify_and_prune_fastgs(max_screen_size = size_threshold, 
+                                                min_opacity = 0.005, 
+                                                extent = scene.cameras_extent, 
+                                                radii=radii,
+                                                args = opt,
+                                                importance_score = importance_score,
+                                                pruning_score = pruning_score)
+
+            # The multiview consistent pruning of fastgs. We do it every 3k iterations after 15k
+            # In this stage, the model converge basically. So we can prune more aggressively without degrading rendering quality.
+            # You can check the rendering results of 20K iterations in arxiv version (https://arxiv.org/abs/2511.04283), the rendering quality is already very good.
+            if iteration % 3000 == 0 and iteration > 15_000 and iteration < 30_000:
+                my_viewpoint_stack = scene.getTrainCameras().copy()
+                camlist = sampling_cameras(my_viewpoint_stack)
+
+                _, pruning_score = compute_gaussian_score_fastgs(camlist, gaussians, pipe, bg, opt)                    
+                gaussians.final_prune_fastgs(min_opacity = 0.1, pruning_score = pruning_score)
+        
+            # Optimization step
+            if iteration < opt.iterations:
+                if opt.optimizer_type == "default":
+                    gaussians.optimizer_step(iteration)
+                elif opt.optimizer_type == "sparse_adam":
+                    visible = radii > 0
+                    gaussians.optimizer.step(visible, radii.shape[0])
+                    gaussians.optimizer.zero_grad(set_to_none = True)
+
+            # record time
+            optim_end.record()
+            torch.cuda.synchronize()
+            optim_time = optim_start.elapsed_time(optim_end)
+            total_time += (iter_time + optim_time) / 1e3
+
+            # 评估/保存前过滤超大高斯（必须在 densify 之后，否则会改掉点数导致 visibility_filter 越界）
             if LARGE_GAUSSIAN_CONFIG["prune_before_eval"] and iteration in testing_iterations:
                 n_before = gaussians.get_xyz.shape[0]
                 max_scales = gaussians.get_scaling.max(dim=1).values
@@ -238,58 +286,11 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                         print(f"\n[ITER {iteration}] Pre-save pruning: removed {n_prune} large gaussians (>{LARGE_GAUSSIAN_CONFIG['scale_multiplier']}x median)")
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
-            
-            optim_start.record()
-            
-            # Densification
+
+            # 透明度重置必须在评估/保存之后，否则这一步评估和保存的是不透明度刚被压到 0.01 的模型
             if iteration < opt.densify_until_iter:
-                # Keep track of max radii in image-space for pruning
-                gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter])
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
-
-                if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
-                    size_threshold = 20 if iteration > opt.opacity_reset_interval else None
-                    my_viewpoint_stack = scene.getTrainCameras().copy()
-                    camlist = sampling_cameras(my_viewpoint_stack)
-
-                    # The multiview consistent densification of fastgs
-                    importance_score, pruning_score = compute_gaussian_score_fastgs(camlist, gaussians, pipe, bg, opt, DENSIFY=True)                    
-                    gaussians.densify_and_prune_fastgs(max_screen_size = size_threshold, 
-                                                min_opacity = 0.005, 
-                                                extent = scene.cameras_extent, 
-                                                radii=radii,
-                                                args = opt,
-                                                importance_score = importance_score,
-                                                pruning_score = pruning_score)
-
                 if iteration % opt.opacity_reset_interval == 0 or (dataset.white_background and iteration == opt.densify_from_iter):
                     gaussians.reset_opacity()
-
-
-            # The multiview consistent pruning of fastgs. We do it every 3k iterations after 15k
-            # In this stage, the model converge basically. So we can prune more aggressively without degrading rendering quality.
-            # You can check the rendering results of 20K iterations in arxiv version (https://arxiv.org/abs/2511.04283), the rendering quality is already very good.
-            if iteration % 3000 == 0 and iteration > 15_000 and iteration < 30_000:
-                my_viewpoint_stack = scene.getTrainCameras().copy()
-                camlist = sampling_cameras(my_viewpoint_stack)
-
-                _, pruning_score = compute_gaussian_score_fastgs(camlist, gaussians, pipe, bg, opt)                    
-                gaussians.final_prune_fastgs(min_opacity = 0.1, pruning_score = pruning_score)
-        
-            # Optimization step
-            if iteration < opt.iterations:
-                if opt.optimizer_type == "default":
-                    gaussians.optimizer_step(iteration)
-                elif opt.optimizer_type == "sparse_adam":
-                    visible = radii > 0
-                    gaussians.optimizer.step(visible, radii.shape[0])
-                    gaussians.optimizer.zero_grad(set_to_none = True)
-
-            # record time
-            optim_end.record()
-            torch.cuda.synchronize()
-            optim_time = optim_start.elapsed_time(optim_end)
-            total_time += (iter_time + optim_time) / 1e3
 
     # scene.save(iteration)
     print(f"Gaussian number: {gaussians._xyz.shape[0]}")
@@ -420,7 +421,10 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
 if __name__ == "__main__":
     # ============ 调试配置 ============
     # 输入路径：COLMAP 数据目录（包含 images/ 和 sparse/ 子目录）
-    DEBUG_SOURCE_PATH = r"D:\Github_code\Drone-FastGS\data\Ganluo_Test"
+    # DEBUG_SOURCE_PATH = r"D:\Github_code\Drone-FastGS\data\Ganluo_Test"
+    # DEBUG_SOURCE_PATH = r"D:\Github_code\Drone-FastGS\data\temp_fastgs_Ganluo"
+    DEBUG_SOURCE_PATH = r"D:\Github_code\Drone-FastGS\data\SWJTU_7th_building"
+    # DEBUG_SOURCE_PATH = r"D:\Github_code\Drone-FastGS\data\SWJTU_7th_building_SfM"
     # 输出路径：训练结果保存目录
     DEBUG_MODEL_PATH = r"D:\Github_code\Drone-FastGS\output\test"
     # 最大迭代次数（调试时设小一点，正式训练用 30000）
@@ -450,7 +454,8 @@ if __name__ == "__main__":
     # 手动指定评估影像的索引（仅当 EVAL_SELECT_MODE = "manual" 时有效）
     # 例如 [0, 10, 20] 表示选取第 0、10、20 张图片（此时 EVAL_IMAGE_COUNT 无效）
     # EVAL_IMAGE_INDICES = [2, 4, 6, 8, 10]
-    EVAL_IMAGE_INDICES = [4, 8, 12, 16, 20] #34张Ganluo
+    # EVAL_IMAGE_INDICES = [4, 8, 12, 16, 20] #34张Ganluo
+    EVAL_IMAGE_INDICES = [2, 4, 6, 8, 10] #14张building
     # 是否按文件名升序排序相机列表（默认是 COLMAP 内部顺序）
     EVAL_SORT_BY_NAME = True
     # ==================================
